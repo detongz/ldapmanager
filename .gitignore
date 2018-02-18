@@ -1,0 +1,5 @@
+*.pyc
+*.swp
+venv/*
+mailcontent
+server.conf

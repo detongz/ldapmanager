@@ -1,0 +1,4 @@
+[ldap]
+ldapserver=127.0.0.1
+dn="cn=admin,dc=example,dc=com"
+password="example"

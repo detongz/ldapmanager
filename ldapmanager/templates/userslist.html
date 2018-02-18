@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>用户列表</title>
+  </head>
+  <body>
+    <div>
+      {% for user in users %}
+      <div style="width: 100%">
+        <span>{{user}}</span>
+        <a href="/admin/deleteuser?{{user.split(',')[0]}}">删除用户</a>
+      </div>
+      {% endfor %}
+    </div>
+  </body>
+</html>

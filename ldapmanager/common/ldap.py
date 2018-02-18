@@ -41,10 +41,12 @@ def list_users(conn, user=None):
                 search_scope = SUBTREE,
                 paged_size=5,
                 generator=True)
-    for (entry, counter) in zip(entry_generator, range(5)):
-        print(entry['dn'])
+    # for (entry, counter) in zip(entry_generator, range(5)):
+    #     print(entry['dn'])
     # return entry_generator ### unbind connectin causes generator error if any operation caused.
+    entry = [item['dn'] for item in entry_generator]
     conn.unbind()
+    return entry
 
 def list_group(conn, group=None):
     conn.bind()

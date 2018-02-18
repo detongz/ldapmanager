@@ -1,4 +1,6 @@
 [ldap]
 ldapserver=127.0.0.1
-dn="cn=admin,dc=example,dc=com"
-password="example"
+admin_dn=cn=admin,dc=example,dc=com
+account_base=ou=People,dc=ustack,dc=com
+group_base=ou=Groups,dc=example,dc=com
+admin_password=example

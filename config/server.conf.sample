@@ -4,3 +4,6 @@ admin_dn=cn=admin,dc=example,dc=com
 account_base=ou=People,dc=ustack,dc=com
 group_base=ou=Groups,dc=example,dc=com
 admin_password=example
+leaders_group_name=cn=Leaders,ou=Groups,dc=example,dc=com
+
+[smtp]

@@ -1,4 +1,3 @@
-
 from ldap3 import ALL
 from ldap3 import Connection
 from ldap3 import Server
@@ -13,7 +12,7 @@ from ldap3.utils.hashed import hashed
 
 from configs import get_configs
 
-# authenticating ldap user
+# authenticating all ldap users
 def auth_login(username, password):
     conf = get_configs('ldap')
     user = 'uid=%s,%s' % (username, conf['account_base'])
@@ -88,11 +87,6 @@ def add_user(conn, username, groupname):
         print(conn.result)
     conn.unbind()
 
-# def modify_user(conn, username, groupname):
-#     conn.bind()
-#     conn.modify_dn()
-#     conn.unbind()
-
 def change_passwd(conn, username ,password):
     conn.bind()
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
@@ -107,8 +101,36 @@ def delete_user(conn, username):
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
     conn.delete(user)
     print conn.result
-    # TODO: REMOVE user from group.
+    # TODO: REMOVE user from groups.
     conn.unbind()
+
+def get_administrated_groups(conn, username):
+    # return group which leader belongs or return False
+    is_leader = False
+    leaders_group_name = get_configs('ldap')['leaders_group_name']
+    user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
+    conn.bind()
+    conn.search(search_base=leaders_group_name,
+                search_filter='(objectClass=groupOfUniqueNames)',
+                search_scope=SUBTREE, attributes=['uniqueMember'])
+    for entry in conn.response:
+        if user in entry['attributes']['uniqueMember']:
+            is_leader = True
+    conn.unbind()
+    if is_leader:
+        # search for groups containing this user
+        conn.bind()
+        administrated_groups = []
+        conn.search(search_base='ou=Groups,dc=ustack,dc=com',
+                      search_filter='(objectClass=groupOfUniqueNames)',
+                      search_scope = SUBTREE, attributes=['uniqueMember'])
+        for group in conn.response:
+            if user in group['attributes']['uniqueMember'] and \
+            group['dn'] != leaders_group_name:
+                administrated_groups.append(group['dn'])
+        conn.unbind()
+        return administrated_groups
+    return is_leader
 
 
 if __name__ == '__main__':
@@ -121,8 +143,19 @@ if __name__ == '__main__':
     # delete_user(get_admin_conn(), 'yangfan1')
     # print list_group(get_admin_conn(), 'SRE')
 
-    add_user(conn, 'zdt2', 'Ops')
-    change_passwd(conn, 'zdt2', 'asdfsadf')
-    print auth_login('zdt2', 'asdfsadf')
-    list_users(conn, 'zdt2')
-    delete_user(conn, 'zdt2')
+    # add_user(conn, 'zdt2', 'Network')
+    # change_passwd(conn, 'zdt2', 'asdfsadf')
+    # print auth_login('zdt2', 'asdfsadf')
+    # list_users(conn, 'zdt2')
+    # delete_user(conn, 'zdt2')
+
+    # conn.bind()
+    # conn.search(search_base='ou=Groups,dc=ustack,dc=com',
+    #               search_filter='(objectClass=groupOfUniqueNames)',
+    #               search_scope = SUBTREE, attributes=['uniqueMember'])
+    # for entry in conn.response:
+    #     print(entry['dn'], entry['attributes']['uniqueMember'])
+    #     # conn.modify(entry['dn'], {'objectClass': [(MODIFY_ADD, ['posixGroup'])]})
+    #     # print conn.result
+    # conn.unbind()
+    print get_administrated_groups(get_admin_conn(), 'zdt2')

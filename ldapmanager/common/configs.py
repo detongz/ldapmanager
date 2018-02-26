@@ -10,3 +10,6 @@ def get_configs(section):
     for item in config.items(section):
         conf[item[0]] = item[1]
     return conf
+
+if __name__ == '__main__':
+    print(get_configs('ldap'))

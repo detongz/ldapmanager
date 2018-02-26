@@ -1,7 +1,9 @@
 from ldapmanager import app
+from ldapmanager.admin import adminblueprint
 from ldapmanager.manager import managerblueprint
 import os
 
+app.register_blueprint(adminblueprint)
 app.register_blueprint(managerblueprint)
 
 if __name__ == '__main__':

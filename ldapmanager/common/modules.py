@@ -32,6 +32,7 @@ class Redis():
         conn = Redis.get_connection()
         conn.delete(key)
 
+
 class User(object):
     def __init__(self, username, password):
         self.admin_conn = None
@@ -39,27 +40,25 @@ class User(object):
         self.groups = None
         self.username = username
         self.password = password
-        self.admin = False
 
         self.is_active = False
         self.is_authenticated = False
-        self.is_administrator = False
+        self.is_admin = False # True if user in Admin group
+        self.is_administrator = False # True if user is admin
         self.is_anonymous = True
 
         config = configs.get_configs('ldap')
-        admin_conn = ldap.get_admin_conn()
+        self.admin_conn = ldap.get_admin_conn()
         if username == "admin" and password == config['admin_password']:
-            self.manager_conn = admin_conn
-            self.admin_conn = admin_conn
-            self.admin = True
+            self.manager_conn = self.admin_conn
+            self.is_admin = True
             self.is_administrator = True
         else:
-            conn = ldap.auth_login(username, password)
-            groups = ldap.get_administrated_groups(admin_conn, username)
-            if conn and groups:
-                self.manager_conn = conn
-                self.admin_conn = admin_conn
-                self.groups = groups
+            self.manager_conn = ldap.auth_login(username, password)
+            self.groups = ldap.get_administrated_groups(self.admin_conn,
+                                                        username)
+            if self.groups:
+                self.is_admin=True
 
         if self.admin_conn and self.manager_conn:
             self.is_active = True

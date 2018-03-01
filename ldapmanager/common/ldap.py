@@ -1,3 +1,4 @@
+# coding: utf-8
 from ldap3 import ALL
 from ldap3 import Connection
 from ldap3 import Server
@@ -17,18 +18,22 @@ def auth_login(username, password):
     conf = get_configs('ldap')
     user = 'uid=%s,%s' % (username, conf['account_base'])
     try:
-        return Connection(Server(conf['ldap_server']), user, password, auto_bind=True)
+        return Connection(Server(conf['ldap_server']), user, password,
+                          auto_bind=True)
     except Exception:
         return False
 
 def get_admin_conn():
     conf = get_configs('ldap')
     try:
-        return Connection(Server(conf['ldap_server']), conf['admin_dn'], conf['admin_password'])
+        return Connection(Server(conf['ldap_server']), conf['admin_dn'],
+                          conf['admin_password'])
     except Exception:
         return False
 
-def list_users(conn, user=None):
+def list_users(conn=None, user=None):
+    if not conn:
+        conn = get_admin_conn()
     conn.bind()
     if user:
         filter = '(uid=%s)' % user
@@ -47,7 +52,7 @@ def list_users(conn, user=None):
     conn.unbind()
     return entry
 
-def list_group(conn, group=None):
+def get_group(conn, group=None):
     conn.bind()
     conf = get_configs('ldap')
     if group:
@@ -67,9 +72,12 @@ def add_user(conn, username, groupname):
     # with uniqueMember: uid=...
     # gidNumber: 1 is a fake one.
 
+    # param username: str name of a user.
+    # param groupname: str name of a group.
+
     conn.bind()
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
-    group = list_group(conn, groupname)
+    group = get_group(conn, groupname)
     conn.add(user,
              ['inetOrgPerson', 'posixAccount', 'shadowAccount', 'top'],
              {'sn': username, 'displayName': username, 'cn': username,
@@ -87,7 +95,9 @@ def add_user(conn, username, groupname):
         print(conn.result)
     conn.unbind()
 
-def change_passwd(conn, username ,password):
+def change_passwd(username ,password, conn=None):
+    if not conn:
+        conn = get_admin_conn()
     conn.bind()
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
     conn.modify(user,
@@ -95,59 +105,78 @@ def change_passwd(conn, username ,password):
                                   [hashed(HASHED_SALTED_SHA, password)])})
     print conn.result
     conn.unbind()
+    return True
 
 def delete_user(conn, username):
     conn.bind()
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
     conn.delete(user)
-    print conn.result
-    # TODO: REMOVE user from groups.
+    groups = get_groups_with_user(conn, user)
+    # REMOVE user from groups.
+    if groups:
+        conn.bind()
+        conn.modify(groups, {'uniqueMember': (MODIFY_DELETE, user)})
     conn.unbind()
 
 def get_administrated_groups(conn, username):
     # return group which leader belongs or return False
+    conn.bind()
     is_leader = False
     leaders_group_name = get_configs('ldap')['leaders_group_name']
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
-    conn.bind()
     conn.search(search_base=leaders_group_name,
                 search_filter='(objectClass=groupOfUniqueNames)',
                 search_scope=SUBTREE, attributes=['uniqueMember'])
     for entry in conn.response:
         if user in entry['attributes']['uniqueMember']:
             is_leader = True
-    conn.unbind()
     if is_leader:
-        # search for groups containing this user
-        conn.bind()
-        administrated_groups = []
-        conn.search(search_base='ou=Groups,dc=ustack,dc=com',
-                      search_filter='(objectClass=groupOfUniqueNames)',
-                      search_scope = SUBTREE, attributes=['uniqueMember'])
-        for group in conn.response:
-            if user in group['attributes']['uniqueMember'] and \
-            group['dn'] != leaders_group_name:
-                administrated_groups.append(group['dn'])
-        conn.unbind()
-        return administrated_groups
+        return get_groups_with_user(conn, user, leaders_group_name)
+    conn.unbind()
     return is_leader
 
+def get_groups_with_user(conn, user_dn, leaders_group_dn=None):
+    # search for groups containing this user
+    conn.bind()
+    administrated_groups = []
+    conn.search(search_base=get_configs('ldap')['group_base'],
+                search_filter='(objectClass=groupOfUniqueNames)',
+                search_scope=SUBTREE, attributes=['uniqueMember'])
+    for group in conn.response:
+        if user_dn in group['attributes']['uniqueMember'] and \
+        group['dn'] != leaders_group_dn:
+            administrated_groups.append(group['dn'])
+    conn.unbind()
+    return administrated_groups
+
+def get_all_managable_users(conn, username):
+    conn.bind()
+    groups = get_administrated_groups(conn, username)
+    users = []
+    for group in groups:
+        conn.bind()
+        conn.search(search_base=group,
+                    search_filter='(objectClass=*)',
+                    search_scope=SUBTREE, attributes=['uniqueMember'])
+        for members in conn.response:
+            users += members['attributes']['uniqueMember']
+    conn.unbind()
+    return users
 
 if __name__ == '__main__':
     conn = get_admin_conn()
-    # conn.bind()
+    conn.bind()
     # conn.search('cn=SRE,ou=Groups,dc=ustack,dc=com', '(objectclass=*)', BASE, attributes=['member'])
     # conn.modify_dn('uid=yangfan,ou=Users,dc=ustack,dc=com', 'uid=yangfan', new_superior='ou=People,dc=ustack,dc=com')
     # conn.unbind()
-    # add_user(get_admin_conn())
-    # delete_user(get_admin_conn(), 'yangfan1')
-    # print list_group(get_admin_conn(), 'SRE')
+    add_user(get_admin_conn(), 'zdt', 'Admin')
+    # delete_user(get_admin_conn(), 'zhanglihui')
+    # print get_group(get_admin_conn(), 'SRE')
 
     # add_user(conn, 'zdt2', 'Network')
-    # change_passwd(conn, 'zdt2', 'asdfsadf')
-    # print auth_login('zdt2', 'asdfsadf')
+    # print auth_login('zhangdetong', 'adsf')
     # list_users(conn, 'zdt2')
-    # delete_user(conn, 'zdt2')
+    # delete_user(conn, 'hebin')
 
     # conn.bind()
     # conn.search(search_base='ou=Groups,dc=ustack,dc=com',
@@ -157,5 +186,5 @@ if __name__ == '__main__':
     #     print(entry['dn'], entry['attributes']['uniqueMember'])
     #     # conn.modify(entry['dn'], {'objectClass': [(MODIFY_ADD, ['posixGroup'])]})
     #     # print conn.result
-    # conn.unbind()
-    print get_administrated_groups(get_admin_conn(), 'zdt2')
+    conn.unbind()
+    # print change_passwd('zhangdetong', 'asdf')

@@ -62,10 +62,14 @@ def get_group(conn, group=None):
     entry = conn.extend.standard.paged_search(conf['group_base'],
                                               filter,
                                               search_scope=SUBTREE)
-    return [item for item in entry]
+    if entry:
+        group_result = [item['dn'] for item in entry]
+    else:
+        group_result = []
     conn.unbind()
+    return group_result
 
-def add_user(conn, username, groupname):
+def add_user(conn, username, groupname, mail=None):
     # TODO: Either modify groups from objectClass: groupOfUniqueNames to
     # objectClass: posixGroup with a gidNumber: 10000
     # or move all groups to groupOfUniqueNames and manage users
@@ -78,6 +82,7 @@ def add_user(conn, username, groupname):
     conn.bind()
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
     group = get_group(conn, groupname)
+    conn.bind()
     conn.add(user,
              ['inetOrgPerson', 'posixAccount', 'shadowAccount', 'top'],
              {'sn': username, 'displayName': username, 'cn': username,
@@ -90,12 +95,25 @@ def add_user(conn, username, groupname):
         # none groupOfUniqueNames groups:
         # conn.modify(user, {'gidNumber': (MODIFY_ADD, [item['']])})
         # conn.extend.microsoft.add_members_to_groups([user],[group]) ##invalid
-        conn.modify([item['dn'] for item in group],
+        conn.modify(group,
                     {'uniqueMember': ('MODIFY_ADD', [user])})
         print(conn.result)
+    if mail:
+        conn.modify(user, {'mail': ('MODIFY_REPLACE', mail)})
     conn.unbind()
 
-def change_passwd(username ,password, conn=None):
+def add_group(conn, groupname, users):
+    group = 'cn=%s,%s' % (groupname, get_configs('ldap')['group_base'])
+    users_dn = map(lambda x: 'uid=%s,%s' %
+                  (x, get_configs('ldap')['account_base']),
+                  users)
+    conn.bind()
+    conn.add(group, ['groupOfUniqueNames', 'top'],
+             {'uniqueMember': users_dn, 'cn': groupname})
+    print conn.result
+    conn.unbind()
+
+def change_passwd(username, password, conn=None):
     if not conn:
         conn = get_admin_conn()
     conn.bind()
@@ -107,15 +125,41 @@ def change_passwd(username ,password, conn=None):
     conn.unbind()
     return True
 
+def change_group_name(conn, old, new):
+    if old and new:
+        if get_group(conn, new):
+            return False
+        conn.bind()
+        old_dn = 'cn=%s,%s' % (old, get_configs('ldap')['group_base'])
+        conn.modify_dn(old_dn, "cn="+new)
+        print conn.result
+        conn.unbind()
+        return True
+
 def delete_user(conn, username):
     conn.bind()
     user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
     conn.delete(user)
-    groups = get_groups_with_user(conn, user)
+    groups = get_groups_with_user(conn=conn, user_dn=user)
     # REMOVE user from groups.
     if groups:
         conn.bind()
         conn.modify(groups, {'uniqueMember': (MODIFY_DELETE, user)})
+    conn.unbind()
+
+def delete_group(conn, group):
+    group_dn = get_group(conn, group)
+    if group_dn:
+        conn.bind()
+        conn.delete(group_dn)
+        conn.unbind()
+
+def remove_user_from_group(conn, username, group):
+    conn.bind()
+    user = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
+    group = 'cn=%s,%s' % (group, get_configs('ldap')['group_base'])
+    conn.modify(group, {'uniqueMember': (MODIFY_DELETE, user)})
+    print conn.result
     conn.unbind()
 
 def get_administrated_groups(conn, username):
@@ -131,27 +175,33 @@ def get_administrated_groups(conn, username):
         if user in entry['attributes']['uniqueMember']:
             is_leader = True
     if is_leader:
-        return get_groups_with_user(conn, user, leaders_group_name)
+        return get_groups_with_user(conn=conn, user_dn=user,
+                                    leaders_group_dn=leaders_group_name)
     conn.unbind()
     return is_leader
 
-def get_groups_with_user(conn, user_dn, leaders_group_dn=None):
+def get_groups_with_user(conn, user_dn=None, leaders_group_dn=None, username=None):
     # search for groups containing this user
     conn.bind()
-    administrated_groups = []
+    groups = []
     conn.search(search_base=get_configs('ldap')['group_base'],
                 search_filter='(objectClass=groupOfUniqueNames)',
                 search_scope=SUBTREE, attributes=['uniqueMember'])
+    if not user_dn:
+        if not username:
+            return None
+        user_dn = 'uid=%s,%s' % (username, get_configs('ldap')['account_base'])
     for group in conn.response:
         if user_dn in group['attributes']['uniqueMember'] and \
         group['dn'] != leaders_group_dn:
-            administrated_groups.append(group['dn'])
+            groups.append(group['dn'])
     conn.unbind()
-    return administrated_groups
+    return groups
 
-def get_all_managable_users(conn, username):
+def get_all_managable_users(conn, username, groups=None):
     conn.bind()
-    groups = get_administrated_groups(conn, username)
+    if not groups:
+        groups = get_administrated_groups(conn, username)
     users = []
     for group in groups:
         conn.bind()
@@ -163,17 +213,43 @@ def get_all_managable_users(conn, username):
     conn.unbind()
     return users
 
+def get_group_users(conn, group_name):
+    group = 'cn=%s,%s' % (group_name, get_configs('ldap')['group_base'])
+    conn.bind()
+    conn.search(search_base=group,
+                search_filter='(objectClass=groupOfUniqueNames)',
+                search_scope=SUBTREE, attributes=['uniqueMember'])
+    response = conn.response
+    if not response:
+        return []
+    users = conn.response[0]['attributes']['uniqueMember']
+    conn.unbind()
+    return users
+
+def filter_admin_users(conn, users):
+    conn.bind()
+    conn.search(search_base=get_configs('ldap')['leaders_group_name'],
+                search_filter='(objectClass=*)',
+                search_scope=SUBTREE, attributes=['uniqueMember'])
+    admins = conn.response[0]['attributes']['uniqueMember']
+    admin_users = []
+    if not users:
+        return None
+    for user in users:
+        if user in admins:
+            admin_users.append(user)
+    return sorted(admin_users)
+
 if __name__ == '__main__':
     conn = get_admin_conn()
     conn.bind()
     # conn.search('cn=SRE,ou=Groups,dc=ustack,dc=com', '(objectclass=*)', BASE, attributes=['member'])
     # conn.modify_dn('uid=yangfan,ou=Users,dc=ustack,dc=com', 'uid=yangfan', new_superior='ou=People,dc=ustack,dc=com')
     # conn.unbind()
-    add_user(get_admin_conn(), 'zdt', 'Admin')
     # delete_user(get_admin_conn(), 'zhanglihui')
     # print get_group(get_admin_conn(), 'SRE')
 
-    # add_user(conn, 'zdt2', 'Network')
+    # add_user(conn, 'zdt10010', 'Network')
     # print auth_login('zhangdetong', 'adsf')
     # list_users(conn, 'zdt2')
     # delete_user(conn, 'hebin')
@@ -186,5 +262,6 @@ if __name__ == '__main__':
     #     print(entry['dn'], entry['attributes']['uniqueMember'])
     #     # conn.modify(entry['dn'], {'objectClass': [(MODIFY_ADD, ['posixGroup'])]})
     #     # print conn.result
+    # print add_group(conn, 'asdf', ['zdt2', 'robot'])
     conn.unbind()
     # print change_passwd('zhangdetong', 'asdf')

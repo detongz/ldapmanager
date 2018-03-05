@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <title>Group Detail {{group.name}} - Ldap manager</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>{{group.name}} 组</h1>
+      <div class="row">
+        <span>组内管理员</span>
+        {% if group.admin %}
+        {% for group in group.admin %}
+          <a style="width: 100%">{{group}}</a>
+        {% endfor%}
+        {% else %}
+        <span style="width: 100%">无</span>
+        {% endif%}
+      </div>
+      <div class="row">
+        <span>组内成员</span>
+        {% if group.users %}
+        {% for user in group.users %}
+        <div class="row align-items-center" style="width: 100%">
+          <div class="col-sm-2">
+            <a href="/admin/userdetail?user={{user}}"  class="btn-outline-info btn-sm">{{user}}</a>
+          </div>
+          <a href="/admin/removeuserfromgroup?user={{user}}&group={{group.name}}"  class="btn-outline-info btn-sm">从这个组里删除该用户</a>
+        </div>
+        {% endfor %}
+        {% else %}
+        <span style="width: 100%">无</span>
+        {% endif %}
+      </div>
+      <div class="row">
+        <a class="btn btn-outline-warning" data-toggle="modal" data-target="#deletegroup">删除 {{group.name}} 组</a>
+        <div class="modal fade" id="deletegroup" role='dialog' tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">删除 {{group.name}} 组</h5>
+              </div>
+              <!-- <div class="modal-body">
+                <p class="alert alert-danger" >请输入组名 "{{group.name}}"</p>
+                <input type="text" name="confirm" value="" id="confirm" class="form-control">
+              </div> -->
+              <div class="modal-footer">
+                <a href="/admin/deletegroup?group={{group.name}}" class="btn btn-outline-danger" id="delete">确认删除</a>
+                <button type="button" class="btn btn btn-outline-dark" data-dismiss="modal">退出</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <a class="btn btn-outline-info" data-toggle="modal" data-target="#changegroupname">修改组名</a>
+        <div class="modal fade" id="changegroupname" role='dialog' tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <form action="{{url_for('admin.changegroupname')}}" method="post">
+                <div class="modal-header">
+                  <h5 class="modal-title">修改组名</h5>
+                </div>
+                <div class="modal-body">
+                  <input type="text" name="old" value="{{group.name}}" hidden>
+                  <input type="text" name="new" value="" class="form-control">
+                </div>
+                <div class="modal-footer">
+                  <input type="submit" class="btn btn-outline-danger" value="确认修改">
+                  <button type="button" class="btn btn btn-outline-dark" data-dismiss="modal">放弃修改</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

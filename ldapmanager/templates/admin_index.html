@@ -6,16 +6,17 @@
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    <title>Users - Ldap manager</title>
+    <title>Ldap manager</title>
   </head>
   <body>
-    <div class="container">
-      {% if is_administrator %}<h1>所有用户</h1>{% else %}<h1>所有可管理的用户</h1>{% endif %}
-      {% for user in users %}
-      <div style="row">
-        <a href="/admin/userdetail?user={{user}}" class="col-sm-3 align-items-center btn-outline-info btn-sm">{{user}}</a>
-      </div>
-      {% endfor %}
-    </div>
+    <p>LdapManager可以管理用户和组。</p>
+    <p>现在这个用户是admin用户，可以管理所有用户所有组。</p>
+    <p>如果有管理员，或者还不是管理员的人要变成管理员，需要你：</p>
+    <p>把这个人加到管理员组里，并且把这个人加到他要管理的组里去。</p>
+
+    <a href="{{url_for('admin.userslist')}}">看所有人</a>
+    <a href="{{url_for('admin.groupslist')}}">看所有组</a>
+    <a href="{{url_for('admin.adduser')}}">添加用户</a>
+    <a href="{{url_for('admin.addgroup')}}">添加组</a>
   </body>
 </html>

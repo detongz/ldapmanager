@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Add Group - Ldap manager</title>
+  </head>
+  <body>
+    <form action="{{url_for('admin.addgroup')}}" method="post">
+      <div class="row">
+        <span>组名</span> <input type="text" name="group">
+      </div>
+      <div class="row">
+        <span>组内用户名（拼音），必填，可以后期继续加，用英文逗号隔开</span>
+        <input type="text" name="users" value="">
+      </div>
+      <input type="submit" value="创建组">
+    </form>
+  </body>
+</html>

@@ -15,7 +15,7 @@ class Login(MethodView):
         try:
             if 'username' in session:
                 current_user = modules.Redis.get(session['username'])
-                return redirect(url_for('admin.userslist'))
+                return redirect(url_for('admin.index'))
         except Exception:
             pass
 
@@ -32,7 +32,7 @@ class Login(MethodView):
             if user.is_administrator or user.is_admin:
                 modules.Redis.set(username, user)
                 session['username'] = username
-                return redirect(url_for('admin.userslist'))
+                return redirect(url_for('admin.index'))
             else:
                 return "DOCS"
         return "NO SUCH USER OR PASSWORD INCORRECT"

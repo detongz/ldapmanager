@@ -1,0 +1,17 @@
+<h1>{{detail.name}}</h1>
+
+{% for group in detail.groups %}
+<div class="row">
+  <a href="/admin/groupdetail?group={{group}}">{{group}}</a>
+  <a href="/admin/removeuserfromgroup?user={{detail.name}}&group={{group}}">从该组中移除用户</a>
+</div>
+{% endfor %}
+<div class="row">
+  <div class="row">
+    <a href="/admin/addusertogroup?uid={{detail.name}}">把用户加入某组</a>
+  </div>
+  <div class="row">
+    <a href="/admin/deleteuser?uid={{detail.name}}">删除用户</a>
+    <span>这里的删除用户是把这个人的账户删除和所有组里对这个人的记录删掉，适用于员工离职。</span>
+  </div>
+</div>

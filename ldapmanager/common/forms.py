@@ -25,3 +25,4 @@ class ChangePasswordForm(FlaskForm):
 class AddUserForm(FlaskForm):
     name = StringField('name', [validators.DataRequired()])
     groups = SelectField('groups', choices=[], option_widget='btn btn-success')
+    email = StringField('email', [validators.DataRequired()])

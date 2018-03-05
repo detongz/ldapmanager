@@ -1,0 +1,10 @@
+<title>Add User To Group - Ldap manager</title>
+<h1>{{username}}</h1>
+<form action="/admin/adduser" method="post">
+  <input value="{{username}}" name="name" type="text" hidden>
+  <input value="" name="email" type="text" hidden>
+  <div>
+    {{ form.groups(class='form-control') }}
+  </div>
+  <input type="submit" value="把用户加入组" style="margin-top: 5px" class='btn btn-success'>
+</form>

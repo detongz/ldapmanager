@@ -53,6 +53,8 @@ class User(object):
             self.manager_conn = self.admin_conn
             self.is_admin = True
             self.is_administrator = True
+            self.groups = ldap.get_group(self.admin_conn)
+            # import pdb; pdb.set_trace()
         else:
             self.manager_conn = ldap.auth_login(username, password)
             self.groups = ldap.get_administrated_groups(self.admin_conn,
@@ -64,3 +66,7 @@ class User(object):
             self.is_active = True
             self.is_authenticated = True
             self.is_anonymous = False
+
+    def get_groups(self):
+        if self.is_administrator:
+            self.groups = ldap.get_group(self.admin_conn)

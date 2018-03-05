@@ -3,7 +3,6 @@ import dill
 
 from ldapmanager.common import configs
 from ldapmanager.common import ldap
-from ldapmanager import login_manager
 from datetime import timedelta
 
 

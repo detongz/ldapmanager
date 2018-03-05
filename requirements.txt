@@ -1,4 +1,6 @@
+six
 ldap3
 flask_wtf
 dill
 py-radius
+redis
